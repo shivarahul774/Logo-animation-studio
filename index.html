@@ -1,0 +1,360 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Logo Animation Generator</title>
+  <script src="https://cdn.jsdelivr.net/npm/react@18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-dom@18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/react-router-dom@6.22.0/dist/umd/react-router-dom.production.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/babel-standalone@7.22.5/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            primary: '#1A3C34', // Deep emerald green
+            secondary: '#D4A017', // Rich gold
+            accent: '#2A4066', // Sapphire blue
+            neutral: '#2D2D2D', // Charcoal (dark mode bg)
+            light: '#F5F5F5', // Off-white (light mode bg)
+            textPrimary: '#FFFFFF', // White for text
+            textSecondary: '#D1D5DB', // Light gray for secondary text
+          },
+        },
+      },
+    };
+  </script>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { BrowserRouter, Routes, Route, Link, useNavigate, useContext } = ReactRouterDOM;
+
+    // Theme Context
+    const ThemeContext = React.createContext();
+
+    function ThemeProvider({ children }) {
+      const [isDarkMode, setIsDarkMode] = React.useState(() => {
+        const saved = localStorage.getItem('darkMode');
+        return saved ? JSON.parse(saved) : false;
+      });
+
+      React.useEffect(() => {
+        localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
+        if (isDarkMode) {
+          document.documentElement.classList.add('dark');
+        } else {
+          document.documentElement.classList.remove('dark');
+        }
+      }, [isDarkMode]);
+
+      const toggleTheme = () => setIsDarkMode(!isDarkMode);
+
+      return (
+        <ThemeContext.Provider value={{ isDarkMode, toggleTheme }}>
+          {children}
+        </ThemeContext.Provider>
+      );
+    }
+
+    // Navbar Component
+    function Navbar() {
+      const { isDarkMode, toggleTheme } = useContext(ThemeContext);
+
+      return (
+        <nav className="bg-primary p-4 shadow">
+          <div className="container mx-auto flex justify-between items-center">
+            <h1 className="text-textPrimary text-2xl font-bold">Logo Animation Studio</h1>
+            <div className="flex space-x-4 items-center">
+              <Link to="/generate" className="text-textPrimary hover:text-secondary">Generate Video</Link>
+              <Link to="/collections" className="text-textPrimary hover:text-secondary">Collections</Link>
+              <Link to="/login" className="text-textPrimary hover:text-secondary">Account</Link>
+              <button
+                onClick={toggleTheme}
+                className="text-textPrimary hover:text-secondary focus:outline-none"
+                aria-label={isDarkMode ? 'Switch to Light Mode' : 'Switch to Dark Mode'}
+              >
+                {isDarkMode ? '☀️' : '🌙'}
+              </button>
+            </div>
+          </div>
+        </nav>
+      );
+    }
+
+    // Home Page Component
+    function HomePage() {
+      return (
+        <div className="min-h-screen bg-light dark:bg-neutral flex flex-col">
+          <Navbar />
+          <div className="flex-grow flex items-center justify-center">
+            <div className="text-center p-8">
+              <h2 className="text-4xl font-bold text-primary dark:text-textPrimary mb-4">
+                Create Stunning 3D Logo Animations
+              </h2>
+              <p className="text-textSecondary mb-6">
+                Upload your brand logo and let our AI craft luxurious 3D video animations.
+              </p>
+              <Link
+                to="/generate"
+                className="bg-secondary text-primary py-2 px-6 rounded hover:bg-accent hover:text-textPrimary"
+              >
+                Get Started
+              </Link>
+            </div>
+          </div>
+          <div className="bg-white dark:bg-primary p-8 m-4 rounded-lg shadow-lg max-w-2xl mx-auto text-center">
+            <h3 className="text-2xl font-semibold text-primary dark:text-textPrimary mb-2">Promote Your Brand</h3>
+            <p className="text-textSecondary mb-4">
+              Unlock premium animations with our exclusive plan for unparalleled quality and style.
+            </p>
+            <a href="https://x.ai/grok" className="text-secondary hover:underline">
+              Discover Premium
+            </a>
+          </div>
+        </div>
+      );
+    }
+
+    // Login Page Component
+    function LoginPage() {
+      const [email, setEmail] = React.useState('');
+      const [password, setPassword] = React.useState('');
+      const [error, setError] = React.useState(null);
+      const [loading, setLoading] = React.useState(false);
+      const navigate = useNavigate();
+
+      const handleLogin = async () => {
+        setLoading(true);
+        setError(null);
+
+        try {
+          const response = await fetch('/api/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+          });
+
+          if (!response.ok) {
+            throw new Error('Invalid credentials.');
+          }
+
+          navigate('/collections');
+        } catch (err) {
+          setError('Login failed. Please check your credentials.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-light dark:bg-neutral flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-primary p-8 rounded-lg shadow-lg w-full max-w-md">
+            <h2 className="text-2xl font-bold text-primary dark:text-textPrimary mb-6 text-center">Login</h2>
+            <div className="mb-4">
+              <label className="block text-primary dark:text-textPrimary mb-2" htmlFor="email">Email</label>
+              <input
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="w-full p-2 border rounded bg-light dark:bg-neutral text-primary dark:text-textPrimary"
+                placeholder="Enter your email"
+              />
+            </div>
+            <div className="mb-4">
+              <label className="block text-primary dark:text-textPrimary mb-2" htmlFor="password">Password</label>
+              <input
+                id="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="w-full p-2 border rounded bg-light dark:bg-neutral text-primary dark:text-textPrimary"
+                placeholder="Enter your password"
+              />
+            </div>
+            {error && <p className="text-red-500 mb-4">{error}</p>}
+            <button
+              onClick={handleLogin}
+              disabled={loading}
+              className={`w-full py-2 px-4 rounded text-primary dark:text-textPrimary ${
+                loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-secondary hover:bg-accent'
+              }`}
+            >
+              {loading ? 'Logging in...' : 'Login'}
+            </button>
+            <p className="mt-4 text-center text-textSecondary">
+              Don't have an account? <Link to="/signup" className="text-secondary hover:underline">Sign Up</Link>
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // Collections Page Component
+    function CollectionsPage() {
+      return (
+        <div className="min-h-screen bg-light dark:bg-neutral p-4">
+          <Navbar />
+          <div className="container mx-auto mt-8">
+            <h2 className="text-2xl font-semibold text-primary dark:text-textPrimary mb-4">Your Generated Videos</h2>
+            <p className="text-textSecondary">Your previously generated 3D logo animations will appear here.</p>
+          </div>
+        </div>
+      );
+    }
+
+    // Video Generation Page
+    function GeneratePage() {
+      const [logoFile, setLogoFile] = React.useState(null);
+      const [videoUrl, setVideoUrl] = React.useState(null);
+      const [loading, setLoading] = React.useState(false);
+      const [error, setError] = React.useState(null);
+
+      const handleFileChange = (event) => {
+        const file = event.target.files[0];
+        if (file && file.type.startsWith('image/')) {
+          setLogoFile(file);
+          setError(null);
+        } else {
+          setError('Please upload a valid image file (PNG, JPG, etc.).');
+        }
+      };
+
+      const handleGenerateVideo = async () => {
+        if (!logoFile) {
+          setError('Please upload a logo first.');
+          return;
+        }
+
+        setLoading(true);
+        setError(null);
+
+        const formData = new FormData();
+        formData.append('logo', logoFile);
+
+        try {
+          const response = await fetch('/api/generate-video', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error('Failed to generate video.');
+          }
+
+          const data = await response.json();
+          setVideoUrl(data.videoUrl);
+        } catch (err) {
+          setError('Error generating video. Please try again.');
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      return (
+        <div className="min-h-screen bg-light dark:bg-neutral p-4">
+          <Navbar />
+          <div className="container mx-auto mt-8 flex justify-center">
+            <div className="bg-white dark:bg-primary p-8 rounded-lg shadow-lg w-full max-w-md">
+              <h2 className="text-2xl font-semibold text-primary dark:text-textPrimary mb-4">Upload Your Logo</h2>
+              <div className="mb-4">
+                <label className="block text-primary dark:text-textPrimary mb-2" htmlFor="logo-upload">
+                  Upload Your Brand Logo
+                </label>
+                <input
+                  id="logo-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileChange}
+                  className="w-full p-2 border rounded bg-light dark:bg-neutral text-primary dark:text-textPrimary"
+                />
+              </div>
+              {error && <p className="text-red-500 mb-4">{error}</p>}
+              <button
+                onClick={handleGenerateVideo}
+                disabled={loading}
+                className={`w-full py-2 px-4 rounded text-primary dark:text-textPrimary ${
+                  loading ? 'bg-gray-400 cursor-not-allowed' : 'bg-secondary hover:bg-accent'
+                }`}
+              >
+                {loading ? 'Generating...' : 'Generate 3D Video'}
+              </button>
+              {videoUrl && (
+                <div className="mt-6">
+                  <h3 className="text-xl font-semibold text-primary dark:text-textPrimary mb-2">
+                    Your 3D Animation
+                  </h3>
+                  <video controls src={videoUrl} className="w-full rounded" />
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // Main App Component
+    function App() {
+      return (
+        <ThemeProvider>
+          <BrowserRouter>
+            <Routes>
+              <Route path="/" element={<HomePage />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/generate" element={<GeneratePage />} />
+              <Route path="/collections" element={<CollectionsPage />} />
+              <Route path="/signup" element={<div>Sign Up Page (Placeholder)</div>} />
+            </Routes>
+          </BrowserRouter>
+        </ThemeProvider>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
